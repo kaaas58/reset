@@ -285,7 +285,7 @@ section { padding-block: 5rem; }
 
 /* ---- Hero ---- */
 .hero {
-  padding-block: 9rem 8rem;
+  padding-block: 9rem 12rem;
   position: relative;
   overflow: hidden;
   background-image:
