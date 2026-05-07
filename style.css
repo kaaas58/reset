@@ -1044,6 +1044,7 @@ img:not([class*="logo"]):not(.nav-logo img) {
   html    { scroll-padding-top: 48px; }
   section { padding-block: 3.5rem; }
   .hero   { padding-block: 4rem 3rem; }
+  .site-header .container { padding-inline: 0.75rem; }
   .nav-links          { display: none; }
   .nav-actions .btn   { display: none; }
   .nav-actions .theme-toggle { display: none; }
