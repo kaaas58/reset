@@ -73,7 +73,7 @@ h3 { font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 p  { max-width: 68ch; }
 
 .section-label {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -246,6 +246,7 @@ section { padding-block: 5rem; }
 }
 [data-theme="light"] .nav-mobile {
   background-color: rgba(236, 232, 225, 0.75);
+  background-blend-mode: luminosity, normal, normal;
 }
 .nav-mobile.open { display: flex; }
 .nav-mobile a {
@@ -622,8 +623,8 @@ a.coach-photo:hover {
   line-height: 1;
 }
 .ueber-uns-lasche:hover {
-  background: #e6b728;
-  padding-bottom: 1rem;
+  transform: translateY(4px);
+  box-shadow: 0 -4px 0 0 var(--gold);
 }
 .lasche-arrow {
   display: inline-block;
@@ -1022,6 +1023,18 @@ img:not([class*="logo"]):not(.nav-logo img) {
 @media (max-width: 900px) {
   .hero-inner        { grid-template-columns: 1fr; }
   .hero-image-wrap   { display: none; }
+  .hero {
+    background-image:
+      linear-gradient(to bottom, rgba(28,27,26,0.82) 0%, rgba(28,27,26,0.55) 100%),
+      url('images/johanmarkplaceholder.jpeg');
+    background-size: cover;
+    background-position: center top;
+  }
+  [data-theme="light"] .hero {
+    background-image:
+      linear-gradient(to bottom, rgba(244,241,236,0.85) 0%, rgba(244,241,236,0.6) 100%),
+      url('images/johanmarkplaceholder.jpeg');
+  }
   .coaches-grid      { grid-template-columns: 1fr; }
   .footer-grid       { grid-template-columns: 1fr 1fr; }
   .codep-grid        { grid-template-columns: repeat(2, 1fr); }
@@ -1081,11 +1094,11 @@ img:not([class*="logo"]):not(.nav-logo img) {
   max-height: 300px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: rgba(212, 160, 23, 0.45) transparent;
 }
 .tc-card::-webkit-scrollbar { width: 5px; }
 .tc-card::-webkit-scrollbar-track { background: transparent; }
-.tc-card::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+.tc-card::-webkit-scrollbar-thumb { background: rgba(212, 160, 23, 0.45); border-radius: 99px; }
 
 .tc-source {
   display: inline-block;
