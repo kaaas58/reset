@@ -196,11 +196,12 @@ document.addEventListener('keydown', e => {
 
 // ---- Testimonial-Karussell ----
 document.querySelectorAll('[data-tc]').forEach(wrap => {
+  const scope   = wrap.parentElement || wrap;
   const track   = wrap.querySelector('[data-tc-track]');
   const slides  = wrap.querySelectorAll('[data-tc-slide]');
-  const dotsEl  = wrap.querySelector('[data-tc-dots]');
-  const prevBtn = wrap.querySelector('[data-tc-prev]');
-  const nextBtn = wrap.querySelector('[data-tc-next]');
+  const dotsEl  = scope.querySelector('[data-tc-dots]');
+  const prevBtn = scope.querySelector('[data-tc-prev]');
+  const nextBtn = scope.querySelector('[data-tc-next]');
   if (!track || !slides.length) return;
 
   let current = 0;
@@ -250,28 +251,43 @@ document.querySelectorAll('[data-tc]').forEach(wrap => {
   }, { passive: true });
 
   // ---- Swipe / Drag (Maus + Touch) ----
-  let startX = null, startY = null;
+  let startX = null, startY = null, captured = false;
 
   track.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
     startX = e.clientX;
     startY = e.clientY;
-    track.setPointerCapture(e.pointerId);
-    track.style.userSelect = 'none';
+    captured = false;
   });
+
+  track.addEventListener('pointermove', e => {
+    if (startX === null || captured) return;
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx > 8 && dx > dy * 1.4) {
+      captured = true;
+      track.setPointerCapture(e.pointerId);
+      wrap.style.cursor = 'grabbing';
+      track.style.userSelect = 'none';
+    } else if (dy > 8) {
+      startX = null; startY = null;
+    }
+  }, { passive: true });
 
   track.addEventListener('pointerup', e => {
     if (startX === null) return;
     const dx = startX - e.clientX;
-    const dy = startY - e.clientY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    if (captured && Math.abs(dx) > 30) {
       goTo(dx > 0 ? current + 1 : current - 1);
     }
-    startX = null; startY = null;
+    startX = null; startY = null; captured = false;
+    wrap.style.cursor = '';
     track.style.userSelect = '';
   });
 
   track.addEventListener('pointercancel', () => {
-    startX = null; startY = null;
+    startX = null; startY = null; captured = false;
+    wrap.style.cursor = '';
     track.style.userSelect = '';
   });
 
