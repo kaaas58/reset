@@ -79,12 +79,25 @@ if (burger && mobileNav) {
 // ---- Über-uns Drawer ----
 const uebBtn    = document.getElementById('ueber-uns-toggle');
 const uebDrawer = document.getElementById('coaches-drawer');
+
+function openUebDrawer() {
+  if (!uebBtn || !uebDrawer) return;
+  uebDrawer.classList.add('is-open');
+  uebBtn.setAttribute('aria-expanded', 'true');
+  uebBtn.querySelector('.lasche-text').textContent = 'Zuklappen';
+}
+
 if (uebBtn && uebDrawer) {
   uebBtn.addEventListener('click', () => {
     const isOpen = uebDrawer.classList.toggle('is-open');
     uebBtn.setAttribute('aria-expanded', String(isOpen));
     uebBtn.querySelector('.lasche-text').textContent = isOpen ? 'Zuklappen' : 'Lerne uns kennen';
   });
+
+  // Drawer automatisch öffnen wenn per #ueber-uns-Hash verlinkt wurde
+  if (window.location.hash === '#ueber-uns') {
+    openUebDrawer();
+  }
 }
 
 // ---- Footer-Logo → nach oben ----
@@ -194,32 +207,72 @@ document.addEventListener('keydown', e => {
 });
 
 
-// ---- Testimonial-Karussell ----
+// ---- Testimonial-Karussell (infinite loop) ----
 document.querySelectorAll('[data-tc]').forEach(wrap => {
-  const scope   = wrap.parentElement || wrap;
-  const track   = wrap.querySelector('[data-tc-track]');
-  const slides  = wrap.querySelectorAll('[data-tc-slide]');
-  const dotsEl  = scope.querySelector('[data-tc-dots]');
-  const prevBtn = scope.querySelector('[data-tc-prev]');
-  const nextBtn = scope.querySelector('[data-tc-next]');
-  if (!track || !slides.length) return;
+  const scope      = wrap.parentElement || wrap;
+  const track      = wrap.querySelector('[data-tc-track]');
+  const origSlides = Array.from(wrap.querySelectorAll('[data-tc-slide]'));
+  const dotsEl     = scope.querySelector('[data-tc-dots]');
+  const prevBtn    = scope.querySelector('[data-tc-prev]');
+  const nextBtn    = scope.querySelector('[data-tc-next]');
+  if (!track || !origSlides.length) return;
 
   let current = 0;
+  let clonesStart = 0;
   let dots = [];
+  let pendingCurrent = null;
+  let isTransitioning = false;
 
-  function gapPx()  { return parseFloat(getComputedStyle(track).gap) || 0; }
-  function slideW() { return slides[0].offsetWidth; }
+  function gapPx()   { return parseFloat(getComputedStyle(track).gap) || 0; }
+  function slideW()  { return origSlides[0].offsetWidth; }
   function visCount() {
     const sw = slideW();
     return sw > 0 ? Math.max(1, Math.round(wrap.offsetWidth / (sw + gapPx()))) : 1;
   }
-  function maxIdx() { return Math.max(0, slides.length - visCount()); }
+  function maxReal() { return Math.max(0, origSlides.length - visCount()); }
+
+  // Klone der letzten vc Slides vorne, erste vc Slides hinten – ermöglicht nahtloses Loopen
+  function buildClones() {
+    Array.from(track.querySelectorAll('[data-tc-clone]')).forEach(c => c.remove());
+    const vc = visCount(), n = origSlides.length;
+    const frag = document.createDocumentFragment();
+    for (let i = Math.max(0, n - vc); i < n; i++) {
+      const cl = origSlides[i].cloneNode(true);
+      cl.setAttribute('data-tc-clone', '1');
+      frag.appendChild(cl);
+    }
+    track.insertBefore(frag, origSlides[0]);
+    clonesStart = Math.min(vc, n);
+    for (let i = 0; i < Math.min(vc, n); i++) {
+      const cl = origSlides[i].cloneNode(true);
+      cl.setAttribute('data-tc-clone', '1');
+      track.appendChild(cl);
+    }
+  }
+
+  function setPos(absIdx, animated) {
+    const val = `translateX(-${absIdx * (slideW() + gapPx())}px)`;
+    if (!animated) {
+      track.style.transition = 'none';
+      track.style.transform = val;
+      track.offsetHeight; // reflow erzwingen, damit keine ungewollte Animation startet
+      track.style.transition = '';
+    } else {
+      track.style.transform = val;
+    }
+  }
+
+  function updateDots(n) {
+    const max = maxReal();
+    const idx = ((n % (max + 1)) + (max + 1)) % (max + 1);
+    dots.forEach((d, i) => d.classList.toggle('is-active', i === idx));
+  }
 
   function buildDots() {
     if (!dotsEl) return;
     dotsEl.innerHTML = '';
     dots = [];
-    const count = maxIdx() + 1;
+    const count = maxReal() + 1;
     for (let i = 0; i < count; i++) {
       const dot = document.createElement('button');
       dot.className = 'tc-dot';
@@ -228,15 +281,39 @@ document.querySelectorAll('[data-tc]').forEach(wrap => {
       dotsEl.appendChild(dot);
       dots.push(dot);
     }
+    updateDots(current);
   }
 
   function goTo(n) {
-    const max = maxIdx();
-    const range = max + 1;
-    current = ((n % range) + range) % range;
-    track.style.transform = `translateX(-${current * (slideW() + gapPx())}px)`;
-    dots.forEach((d, i) => d.classList.toggle('is-active', i === current));
+    if (isTransitioning) return;
+    const max = maxReal();
+    if (n > max) {
+      // Vorwärts über das Ende: zu End-Klonen animieren, dann zu echtem Anfang springen
+      isTransitioning = true;
+      pendingCurrent = 0;
+      updateDots(0);
+      setPos(clonesStart + origSlides.length, true);
+    } else if (n < 0) {
+      // Rückwärts vor den Anfang: zu Start-Klonen animieren, dann zu echtem Ende springen
+      isTransitioning = true;
+      pendingCurrent = max;
+      updateDots(max);
+      setPos(0, true);
+    } else {
+      current = n;
+      updateDots(n);
+      setPos(n + clonesStart, true);
+    }
   }
+
+  // Nach Animation zum Klon: sofort auf echte Position springen (kein sichtbarer Sprung)
+  track.addEventListener('transitionend', e => {
+    if (e.propertyName !== 'transform' || pendingCurrent === null) return;
+    current = pendingCurrent;
+    pendingCurrent = null;
+    isTransitioning = false;
+    setPos(current + clonesStart, false);
+  });
 
   prevBtn?.addEventListener('click', () => goTo(current - 1));
   nextBtn?.addEventListener('click', () => goTo(current + 1));
@@ -245,8 +322,10 @@ document.querySelectorAll('[data-tc]').forEach(wrap => {
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+      buildClones();
+      current = Math.min(current, maxReal());
       buildDots();
-      goTo(Math.min(current, maxIdx()));
+      setPos(current + clonesStart, false);
     }, 100);
   }, { passive: true });
 
@@ -291,6 +370,7 @@ document.querySelectorAll('[data-tc]').forEach(wrap => {
     track.style.userSelect = '';
   });
 
+  buildClones();
   buildDots();
-  goTo(0);
+  setPos(clonesStart, false);
 });
